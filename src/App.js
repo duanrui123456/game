@@ -1,0 +1,300 @@
+import React, { useReducer, useEffect, useCallback, useState } from 'react';
+import './App.css';
+import GameArea from './components/GameArea';
+import ControlPanel from './components/ControlPanel';
+import GameStatusOverlay from './components/GameStatusOverlay';
+import SortingZone from './components/SortingZone';
+import BackgroundMusic from './components/BackgroundMusic';
+import { GAME_STATES, LEVELS, ITEMS_INFO, ITEM_TYPES } from './utils/gameConfig';
+import {
+  generateItems,
+  generateOrder,
+  checkOrder,
+  calculateScore,
+  isItemTypeFullInSortingZone
+} from './utils/gameLogic';
+
+// 初始游戏状态
+const initialGameState = {
+  gameState: GAME_STATES.IDLE,
+  currentLevel: 0,
+  totalScore: 0,
+  timeLeft: null,
+  currentOrder: [],
+  itemsInPhysics: [],
+  itemsInSortingZone: [],
+};
+
+// 游戏状态reducer
+function gameReducer(state, action) {
+  switch (action.type) {
+    case 'START_GAME':
+      return {
+        ...initialGameState,
+        gameState: GAME_STATES.PLAYING,
+        currentLevel: 1,
+        timeLeft: LEVELS[0].timeLimit,
+        currentOrder: action.payload.order,
+        itemsInPhysics: action.payload.items,
+      };
+
+    case 'START_LEVEL':
+      return {
+        ...state,
+        gameState: GAME_STATES.PLAYING,
+        timeLeft: LEVELS[state.currentLevel - 1].timeLimit,
+        currentOrder: action.payload.order,
+        itemsInPhysics: action.payload.items,
+        itemsInSortingZone: [],
+      };
+
+    case 'TICK_TIMER':
+      if (state.timeLeft <= 0) {
+        // 时间到，游戏结束
+        return {
+          ...state,
+          gameState: GAME_STATES.GAME_OVER,
+          timeLeft: 0,
+        };
+      }
+      return {
+        ...state,
+        timeLeft: state.timeLeft - 1,
+      };
+
+    case 'MOVE_ITEM_TO_SORTING':
+      return {
+        ...state,
+        itemsInSortingZone: [...state.itemsInSortingZone, action.payload.item],
+        itemsInPhysics: state.itemsInPhysics.filter(item => item.id !== action.payload.item.id),
+      };
+
+    case 'CHECK_ORDER':
+      const checkResult = action.payload.checkResult;
+      const levelConfig = LEVELS[state.currentLevel - 1];
+
+      if (checkResult.success) {
+        const score = calculateScore(state.timeLeft, checkResult, levelConfig);
+
+        if (state.currentLevel >= LEVELS.length) {
+          // 所有关卡完成
+          return {
+            ...state,
+            gameState: GAME_STATES.GAME_OVER,
+            totalScore: state.totalScore + score,
+            currentOrder: checkResult.updatedOrder,
+          };
+        } else {
+          // 进入下一关
+          return {
+            ...state,
+            gameState: GAME_STATES.LEVEL_COMPLETE,
+            totalScore: state.totalScore + score,
+            currentOrder: checkResult.updatedOrder,
+          };
+        }
+      } else {
+        // 核对失败，更新订单状态但继续游戏
+        return {
+          ...state,
+          currentOrder: checkResult.updatedOrder,
+        };
+      }
+
+    case 'NEXT_LEVEL':
+      return {
+        ...state,
+        currentLevel: state.currentLevel + 1,
+        gameState: GAME_STATES.PLAYING,
+        timeLeft: LEVELS[state.currentLevel].timeLimit,
+        currentOrder: action.payload.order,
+        itemsInPhysics: action.payload.items,
+        itemsInSortingZone: [],
+      };
+
+    case 'RESTART_GAME':
+      return {
+        ...initialGameState,
+        gameState: GAME_STATES.PLAYING,
+        currentLevel: 1,
+        timeLeft: LEVELS[0].timeLimit,
+        currentOrder: action.payload.order,
+        itemsInPhysics: action.payload.items,
+      };
+
+    default:
+      return state;
+  }
+}
+
+function App() {
+  const [gameState, dispatch] = useReducer(gameReducer, initialGameState);
+  const [sortingZoneRect, setSortingZoneRect] = useState(null);
+  const [notification, setNotification] = useState(null);
+
+  // 显示提示信息的函数
+  const showNotification = useCallback((message, type = 'info') => {
+    setNotification({ message, type });
+
+    // 3秒后自动清除提示
+    setTimeout(() => {
+      setNotification(null);
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    // 添加拖放事件监听器到整个文档
+    const handleDragStart = (e) => {
+      // 防止默认的拖放行为，允许自定义处理
+      e.preventDefault();
+      return false;
+    };
+
+    document.addEventListener('dragstart', handleDragStart);
+
+    return () => {
+      document.removeEventListener('dragstart', handleDragStart);
+    };
+  }, []);
+
+  // 生成关卡物品和订单
+  const generateLevelItems = useCallback((level) => {
+    const levelConfig = LEVELS[level - 1];
+    if (!levelConfig) return { items: [], order: [] };
+
+    // 假设物理区域的尺寸
+    const physicsWidth = 800;
+    const physicsHeight = 600;
+
+    const items = generateItems(levelConfig, physicsWidth, physicsHeight);
+    const order = generateOrder(levelConfig);
+
+    return { items, order };
+  }, []);
+
+  // 开始游戏
+  const handleStartGame = useCallback(() => {
+    const { items, order } = generateLevelItems(1);
+    dispatch({ type: 'START_GAME', payload: { items, order } });
+  }, [generateLevelItems]);
+
+  // 开始下一关
+  const handleStartNextLevel = useCallback(() => {
+    const nextLevel = gameState.currentLevel + 1;
+    if (nextLevel <= LEVELS.length) {
+      const { items, order } = generateLevelItems(nextLevel);
+      dispatch({ type: 'NEXT_LEVEL', payload: { items, order } });
+    }
+  }, [gameState.currentLevel, generateLevelItems]);
+
+  // 重新开始游戏
+  const handleRestartGame = useCallback(() => {
+    const { items, order } = generateLevelItems(1);
+    dispatch({ type: 'RESTART_GAME', payload: { items, order } });
+  }, [generateLevelItems]);
+
+  // 物品被拖入分拣区
+  const handleItemDropped = useCallback((item) => {
+    // 检查此类型物品是否已达到订单要求数量
+    if (!isItemTypeFullInSortingZone(gameState.currentOrder, gameState.itemsInSortingZone, item.type)) {
+      dispatch({ type: 'MOVE_ITEM_TO_SORTING', payload: { item } });
+    } else {
+      // 显示提示信息
+      showNotification(`${ITEMS_INFO[item.type].name}已达到订单需求数量，无法继续添加`, 'warning');
+    }
+  }, [gameState.currentOrder, gameState.itemsInSortingZone, showNotification]);
+
+  // 核对订单
+  const handleCheckOrder = useCallback(() => {
+    const checkResult = checkOrder(gameState.currentOrder, gameState.itemsInSortingZone);
+    dispatch({ type: 'CHECK_ORDER', payload: { checkResult } });
+  }, [gameState.currentOrder, gameState.itemsInSortingZone]);
+
+  // 计时器
+  useEffect(() => {
+    if (gameState.gameState !== GAME_STATES.PLAYING || gameState.timeLeft === null) {
+      return;
+    }
+
+    const timerId = setInterval(() => {
+      dispatch({ type: 'TICK_TIMER' });
+    }, 1000);
+
+    return () => {
+      clearInterval(timerId);
+    };
+  }, [gameState.gameState, gameState.timeLeft]);
+
+  // 更新分拣区矩形位置的回调函数
+  const handleSortingZoneRectUpdate = useCallback((rect) => {
+    console.log('App: 更新分拣区矩形', rect);
+    setSortingZoneRect(rect);
+  }, []);
+
+  // 获取分拣区矩形位置的函数
+  const getSortingZoneRect = useCallback(() => {
+    return sortingZoneRect;
+  }, [sortingZoneRect]);
+
+  return (
+    <div className="App min-h-screen bg-gray-900 p-4" style={{fontFamily: 'sans-serif'}}>
+      <div className="container mx-auto h-screen flex flex-col">
+        <header className="mb-4">
+          <h1 className="text-2xl font-bold text-center text-white">超市分拣游戏</h1>
+        </header>
+
+        <main className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden">
+          {/* 游戏物理区域 */}
+          <div className="w-full md:w-2/3 h-[500px] md:h-full bg-gray-100 rounded-lg">
+            <GameArea
+              items={gameState.itemsInPhysics}
+              onItemDropped={handleItemDropped}
+              getSortingZoneRect={getSortingZoneRect}
+              gameIsActive={gameState.gameState === GAME_STATES.PLAYING}
+            />
+          </div>
+
+          {/* 控制面板 */}
+          <div className="w-full md:w-1/3 h-[500px] md:h-full">
+            <ControlPanel
+              order={gameState.currentOrder}
+              sortedItems={gameState.itemsInSortingZone}
+              onSortingZoneRectUpdate={handleSortingZoneRectUpdate}
+              onCheckOrder={handleCheckOrder}
+              currentLevel={gameState.currentLevel}
+              totalScore={gameState.totalScore}
+              timeLeft={gameState.timeLeft}
+              gameState={gameState.gameState}
+            />
+          </div>
+        </main>
+      </div>
+
+      {/* 游戏状态覆盖层 */}
+      <GameStatusOverlay
+        gameState={gameState.gameState}
+        currentLevel={gameState.currentLevel}
+        totalScore={gameState.totalScore}
+        onStartGame={handleStartGame}
+        onStartNextLevel={handleStartNextLevel}
+        onRestartGame={handleRestartGame}
+      />
+
+      {/* 提示信息 */}
+      {notification && (
+        <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300
+          ${notification.type === 'warning' ? 'bg-yellow-500 text-white' :
+            notification.type === 'error' ? 'bg-red-500 text-white' :
+            'bg-blue-500 text-white'}`}
+        >
+          {notification.message}
+        </div>
+      )}
+
+      {/* 背景音乐 */}
+      <BackgroundMusic gameState={gameState.gameState} />
+    </div>
+  );
+}
+
+export default App;
