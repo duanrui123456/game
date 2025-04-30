@@ -81,7 +81,6 @@ const GameItem = memo(({ item, itemInfo, onClick }) => {
 const GameArea = ({
   items = [],
   onItemDropped,
-  getSortingZoneRect,
   gameIsActive,
   currentLevel = 1,
   currentOrder = []
@@ -229,17 +228,27 @@ const GameArea = ({
   const handleItemClick = useCallback((item) => {
     if (!gameIsActive || isAnimating) return;
 
-    // 播放点击音效
+    // 播放点击音效 - 无论物品是否在订单列表中，都播放点击音效
     if (window.gameAudio && window.gameAudio.playTapSound) {
       window.gameAudio.playTapSound();
     }
 
     // 检查物品是否在订单列表中
-    const isItemInOrder = currentOrder.some(orderItem => orderItem.type === item.type);
+    const orderItem = currentOrder.find(orderItem => orderItem.type === item.type);
+    if (!orderItem) {
+      // 如果物品不在订单列表中，不做任何处理，只调用回调函数
+      onItemDropped(item);
+      return;
+    }
 
-    if (!isItemInOrder) {
-      // 如果物品不在订单列表中，不做任何处理
-      console.log("物品不在订单列表中，不会消失:", item.type);
+    // 检查此类型物品是否已达到订单要求数量
+    // 使用isItemTypeFullInSortingZone函数来检查
+    const isItemTypeFull = window.isItemTypeFullInSortingZone &&
+                          window.isItemTypeFullInSortingZone(currentOrder, window.itemsInSortingZone || [], item.type);
+
+    if (isItemTypeFull) {
+      // 如果已达到或超过需求数量，不做任何处理，只调用回调函数
+      onItemDropped(item);
       return;
     }
 
@@ -303,7 +312,7 @@ const GameArea = ({
 
       {/* 游戏提示信息 */}
       <div className="game-info">
-        点击订单中的商品即可将其收集，不在订单中的商品点击无效
+        点击订单中的商品即可将其收集，超过订单数量的商品将无法添加到分拣区
       </div>
     </div>
   );

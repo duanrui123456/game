@@ -64,10 +64,35 @@ function gameReducer(state, action) {
       };
 
     case 'MOVE_ITEM_TO_SORTING':
+      // 检查此类型物品是否已达到订单要求数量
+      const itemType = action.payload.item.type;
+      const orderItem = state.currentOrder.find(item => item.type === itemType);
+
+      if (!orderItem) {
+        // 如果订单中没有该类型，则不添加到分拣区，也不从物理区域移除
+        return state;
+      }
+
+      // 计算该类型已在分拣区的数量
+      const collectedCount = state.itemsInSortingZone.filter(item => item.type === itemType).length;
+
+      // 检查是否已达到或超过需求数量
+      if (collectedCount >= orderItem.required) {
+        // 如果已达到或超过需求数量，则不添加到分拣区，也不从物理区域移除
+        return state;
+      }
+
+      // 如果未达到需求数量，则添加到分拣区并从物理区域移除
       return {
         ...state,
         itemsInSortingZone: [...state.itemsInSortingZone, action.payload.item],
         itemsInPhysics: state.itemsInPhysics.filter(item => item.id !== action.payload.item.id),
+      };
+
+    case 'REMOVE_ITEM_FROM_PHYSICS':
+      return {
+        ...state,
+        itemsInPhysics: state.itemsInPhysics.filter(item => item.id !== action.payload.itemId),
       };
 
     case 'CHECK_ORDER':
@@ -132,6 +157,12 @@ function App() {
   const [gameState, dispatch] = useReducer(gameReducer, initialGameState);
   const [sortingZoneRect, setSortingZoneRect] = useState(null);
   const [notification, setNotification] = useState(null);
+
+  // 将isItemTypeFullInSortingZone函数和itemsInSortingZone暴露给window对象，以便GameArea组件可以使用
+  useEffect(() => {
+    window.isItemTypeFullInSortingZone = isItemTypeFullInSortingZone;
+    window.itemsInSortingZone = gameState.itemsInSortingZone;
+  }, [gameState.itemsInSortingZone]);
 
   // 显示提示信息的函数
   const showNotification = useCallback((message, type = 'info') => {
@@ -201,25 +232,26 @@ function App() {
   const handleItemDropped = useCallback((item) => {
     console.log("App.js: 物品被点击", item);
 
+    // 检查物品是否在订单列表中
+    const orderItem = gameState.currentOrder.find(orderItem => orderItem.type === item.type);
+
     // 检查此类型物品是否已达到订单要求数量
     const isItemTypeFull = isItemTypeFullInSortingZone(gameState.currentOrder, gameState.itemsInSortingZone, item.type);
     console.log("物品类型是否已满:", isItemTypeFull, "类型:", item.type);
 
-    if (!isItemTypeFull) {
-      // 将物品添加到分拣区
-      console.log("添加物品到分拣区:", item);
-      dispatch({ type: 'MOVE_ITEM_TO_SORTING', payload: { item } });
-
-      // 显示提示信息
-      showNotification(`已添加 ${ITEMS_INFO[item.type].name} 到分拣区`, 'info');
-    } else {
-      // 仅从物理区域移除物品，不添加到分拣区
-      console.log("仅移除物品:", item.id);
-      dispatch({ type: 'REMOVE_ITEM_FROM_PHYSICS', payload: { itemId: item.id } });
-
-      // 显示提示信息
-      showNotification(`${ITEMS_INFO[item.type].name}已达到订单需求数量，物品已移除`, 'warning');
+    // 根据物品类型和数量显示不同的提示信息
+    if (!orderItem) {
+      // 如果物品不在订单列表中
+      showNotification(`${ITEMS_INFO[item.type].name} 不在订单列表中，无需收集`, 'warning');
+      return; // 不执行任何操作
+    } else if (isItemTypeFull) {
+      // 如果物品类型已达到订单要求数量
+      showNotification(`${ITEMS_INFO[item.type].name}已达到订单需求数量，不能添加更多`, 'warning');
+      return; // 不执行任何操作
     }
+
+    // 只有当物品在订单列表中且未达到需求数量时，才将物品添加到分拣区
+    dispatch({ type: 'MOVE_ITEM_TO_SORTING', payload: { item } });
   }, [gameState.currentOrder, gameState.itemsInSortingZone, showNotification]);
 
   // 核对订单
@@ -290,7 +322,6 @@ function App() {
             <GameArea
               items={gameState.itemsInPhysics}
               onItemDropped={handleItemDropped}
-              getSortingZoneRect={getSortingZoneRect}
               gameIsActive={gameState.gameState === GAME_STATES.PLAYING}
               currentLevel={gameState.currentLevel}
               currentOrder={gameState.currentOrder}
