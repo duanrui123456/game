@@ -5,6 +5,7 @@ import ControlPanel from './components/ControlPanel';
 import GameStatusOverlay from './components/GameStatusOverlay';
 import SortingZone from './components/SortingZone';
 import BackgroundMusic from './components/BackgroundMusic';
+import SoundEffects from './components/SoundEffects';
 import { GAME_STATES, LEVELS, ITEMS_INFO, ITEM_TYPES } from './utils/gameConfig';
 import {
   generateItems,
@@ -207,6 +208,18 @@ function App() {
   // 核对订单
   const handleCheckOrder = useCallback(() => {
     const checkResult = checkOrder(gameState.currentOrder, gameState.itemsInSortingZone);
+
+    // 根据核对结果播放相应的音效
+    if (window.gameAudio) {
+      if (checkResult.success) {
+        // 如果分拣区和清单商品一致，播放correct音效
+        window.gameAudio.playCorrectSound();
+      } else {
+        // 如果分拣区和清单商品不一致，播放alarm音效
+        window.gameAudio.playAlarmSound();
+      }
+    }
+
     dispatch({ type: 'CHECK_ORDER', payload: { checkResult } });
   }, [gameState.currentOrder, gameState.itemsInSortingZone]);
 
@@ -224,6 +237,17 @@ function App() {
       clearInterval(timerId);
     };
   }, [gameState.gameState, gameState.timeLeft]);
+
+  // 监听游戏状态变化，在关卡完成或游戏结束时播放烟花音效
+  useEffect(() => {
+    if (gameState.gameState === GAME_STATES.LEVEL_COMPLETE ||
+        gameState.gameState === GAME_STATES.GAME_OVER) {
+      // 播放烟花音效
+      if (window.gameAudio && window.gameAudio.playFireworksSound) {
+        window.gameAudio.playFireworksSound();
+      }
+    }
+  }, [gameState.gameState]);
 
   // 更新分拣区矩形位置的回调函数
   const handleSortingZoneRectUpdate = useCallback((rect) => {
@@ -293,6 +317,9 @@ function App() {
 
       {/* 背景音乐 */}
       <BackgroundMusic gameState={gameState.gameState} />
+
+      {/* 音效管理 */}
+      <SoundEffects />
     </div>
   );
 }
