@@ -163,12 +163,15 @@ function App() {
     const levelConfig = LEVELS[level - 1];
     if (!levelConfig) return { items: [], order: [] };
 
-    // 假设物理区域的尺寸
-    const physicsWidth = 800;
-    const physicsHeight = 600;
+    // 游戏区域的尺寸
+    const areaWidth = 800;
+    const areaHeight = 600;
 
-    const items = generateItems(levelConfig, physicsWidth, physicsHeight);
+    // 先生成订单
     const order = generateOrder(levelConfig);
+
+    // 然后根据订单生成物品，确保物品数量和种类至少是订单的两倍
+    const items = generateItems(levelConfig, areaWidth, areaHeight, order);
 
     return { items, order };
   }, []);
@@ -194,14 +197,28 @@ function App() {
     dispatch({ type: 'RESTART_GAME', payload: { items, order } });
   }, [generateLevelItems]);
 
-  // 物品被拖入分拣区
+  // 物品被点击
   const handleItemDropped = useCallback((item) => {
+    console.log("App.js: 物品被点击", item);
+
     // 检查此类型物品是否已达到订单要求数量
-    if (!isItemTypeFullInSortingZone(gameState.currentOrder, gameState.itemsInSortingZone, item.type)) {
+    const isItemTypeFull = isItemTypeFullInSortingZone(gameState.currentOrder, gameState.itemsInSortingZone, item.type);
+    console.log("物品类型是否已满:", isItemTypeFull, "类型:", item.type);
+
+    if (!isItemTypeFull) {
+      // 将物品添加到分拣区
+      console.log("添加物品到分拣区:", item);
       dispatch({ type: 'MOVE_ITEM_TO_SORTING', payload: { item } });
-    } else {
+
       // 显示提示信息
-      showNotification(`${ITEMS_INFO[item.type].name}已达到订单需求数量，无法继续添加`, 'warning');
+      showNotification(`已添加 ${ITEMS_INFO[item.type].name} 到分拣区`, 'info');
+    } else {
+      // 仅从物理区域移除物品，不添加到分拣区
+      console.log("仅移除物品:", item.id);
+      dispatch({ type: 'REMOVE_ITEM_FROM_PHYSICS', payload: { itemId: item.id } });
+
+      // 显示提示信息
+      showNotification(`${ITEMS_INFO[item.type].name}已达到订单需求数量，物品已移除`, 'warning');
     }
   }, [gameState.currentOrder, gameState.itemsInSortingZone, showNotification]);
 
@@ -275,6 +292,8 @@ function App() {
               onItemDropped={handleItemDropped}
               getSortingZoneRect={getSortingZoneRect}
               gameIsActive={gameState.gameState === GAME_STATES.PLAYING}
+              currentLevel={gameState.currentLevel}
+              currentOrder={gameState.currentOrder}
             />
           </div>
 

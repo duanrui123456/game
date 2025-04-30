@@ -1,0 +1,200 @@
+/**
+ * 游戏区域组件
+ * 使用React直接渲染和管理商品
+ */
+
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { ITEMS_INFO } from '../utils/gameConfig';
+import './GameArea.css';
+
+const GameArea = ({
+  items = [],
+  onItemDropped,
+  getSortingZoneRect,
+  gameIsActive
+}) => {
+  const containerRef = useRef(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [gameItems, setGameItems] = useState([]);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  // 获取容器尺寸和更新尺寸的函数
+  const updateDimensions = useCallback(() => {
+    if (!containerRef.current) return;
+
+    const { width, height } = containerRef.current.getBoundingClientRect();
+    setDimensions({ width, height });
+  }, []);
+
+  // 获取容器尺寸
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
+    };
+  }, [updateDimensions]);
+
+  // 处理物品数据
+  useEffect(() => {
+    if (!gameIsActive) {
+      setGameItems([]);
+      return;
+    }
+
+    // 将传入的物品转换为游戏物品，添加随机位置
+    const newGameItems = items.map(item => {
+      // 获取物品信息
+      const itemInfo = ITEMS_INFO[item.type];
+      
+      // 计算物品在游戏区域的随机位置
+      const padding = Math.max(itemInfo.radius || 0, 
+                              (itemInfo.width || 0) / 2, 
+                              (itemInfo.height || 0) / 2) + 20;
+      
+      const x = Math.random() * (dimensions.width - 2 * padding) + padding;
+      const y = Math.random() * (dimensions.height - 2 * padding) + padding;
+      
+      return {
+        ...item,
+        x,
+        y,
+        visible: true,
+        animating: false
+      };
+    });
+    
+    setGameItems(newGameItems);
+  }, [items, dimensions, gameIsActive]);
+
+  // 处理物品点击
+  const handleItemClick = useCallback((item) => {
+    if (!gameIsActive || isAnimating) return;
+    
+    // 播放点击音效
+    if (window.gameAudio && window.gameAudio.playTapSound) {
+      window.gameAudio.playTapSound();
+    }
+    
+    // 标记物品为动画状态
+    setIsAnimating(true);
+    
+    // 更新物品状态为动画中
+    setGameItems(prevItems => 
+      prevItems.map(gameItem => 
+        gameItem.id === item.id 
+          ? { ...gameItem, animating: true } 
+          : gameItem
+      )
+    );
+    
+    // 动画结束后移除物品并调用回调
+    setTimeout(() => {
+      // 移除物品
+      setGameItems(prevItems => 
+        prevItems.filter(gameItem => gameItem.id !== item.id)
+      );
+      
+      // 调用回调函数
+      onItemDropped(item);
+      
+      // 重置动画状态
+      setIsAnimating(false);
+    }, 300); // 动画持续时间
+  }, [gameIsActive, isAnimating, onItemDropped]);
+
+  // 渲染游戏物品
+  const renderGameItems = () => {
+    return gameItems.map(item => {
+      const itemInfo = ITEMS_INFO[item.type];
+      
+      // 计算物品尺寸和样式
+      let itemStyle = {
+        backgroundColor: itemInfo.color,
+        left: `${item.x}px`,
+        top: `${item.y}px`,
+      };
+      
+      // 根据物品形状设置不同的样式
+      if (itemInfo.shape === 'circle') {
+        itemStyle = {
+          ...itemStyle,
+          width: `${itemInfo.radius * 2}px`,
+          height: `${itemInfo.radius * 2}px`,
+          marginLeft: `-${itemInfo.radius}px`,
+          marginTop: `-${itemInfo.radius}px`,
+        };
+      } else {
+        itemStyle = {
+          ...itemStyle,
+          width: `${itemInfo.width}px`,
+          height: `${itemInfo.height}px`,
+          marginLeft: `-${itemInfo.width / 2}px`,
+          marginTop: `-${itemInfo.height / 2}px`,
+        };
+      }
+      
+      // 添加动画类
+      const animationClass = item.animating ? 'game-item-disappear' : 'game-item-appear';
+      
+      return (
+        <div
+          key={item.id}
+          className={`game-item ${itemInfo.shape} ${animationClass}`}
+          style={itemStyle}
+          onClick={() => handleItemClick(item)}
+        >
+          {itemInfo.emoji || ''}
+        </div>
+      );
+    });
+  };
+
+  // 添加测试物品的函数（仅用于开发测试）
+  const addTestItem = useCallback(() => {
+    if (!gameIsActive || items.length === 0) return;
+    
+    // 随机选择一个物品类型
+    const randomIndex = Math.floor(Math.random() * items.length);
+    const randomItem = items[randomIndex];
+    
+    // 调用回调函数
+    onItemDropped(randomItem);
+  }, [gameIsActive, items, onItemDropped]);
+
+  return (
+    <div 
+      ref={containerRef} 
+      className="game-area"
+      onClick={(e) => {
+        // 播放点击音效
+        if (window.gameAudio && window.gameAudio.playTapSound && e.target === e.currentTarget) {
+          window.gameAudio.playTapSound();
+        }
+      }}
+    >
+      {/* 渲染游戏物品 */}
+      {renderGameItems()}
+      
+      {/* 游戏提示信息 */}
+      <div className="game-info">
+        点击商品即可将其收集，符合订单的商品会自动放入分拣区
+      </div>
+      
+      {/* 测试按钮 */}
+      {process.env.NODE_ENV === 'development' && (
+        <button 
+          className="test-button"
+          onClick={addTestItem}
+        >
+          测试: 收集物品
+        </button>
+      )}
+    </div>
+  );
+};
+
+export default GameArea;

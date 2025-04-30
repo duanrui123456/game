@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="128" fill="#ffffff"/>
+  
+  <!-- Kangaroo -->
+  <path d="M400 370c0 0-10 40-40 60s-60 10-80-10c-20-20-30-50-30-50s-10-30-10-50c0-20 0-40 10-60s30-30 50-30c20 0 40 10 50 30c10 20 10 40 10 60c0 20-10 40-10 50c0 10 10 20 20 20c10 0 20-10 20-20c0-10 10-30 10-30" fill="#e0a06c" stroke="#000000" stroke-width="10"/>
+  <circle cx="370" cy="400" r="5" fill="#000000"/>
+  
+  <!-- Blue Bag -->
+  <path d="M250 420c0 0-20-10-30-30c-10-20-10-40-10-60c0-20 10-40 30-50c20-10 40-10 60 0c20 10 30 30 30 50c0 20-10 40-10 60c0 20-20 30-30 30" fill="#3498db" stroke="#000000" stroke-width="10"/>
+  <path d="M220 320c0 0 10-20 30-20c20 0 30 20 30 20" fill="none" stroke="#000000" stroke-width="10"/>
+  
+  <!-- Yellow Bag -->
+  <path d="M150 420c0 0-20-10-30-30c-10-20-10-40-10-60c0-20 10-40 30-50c20-10 40-10 60 0c20 10 30 30 30 50" fill="#f5cd79" stroke="#000000" stroke-width="10"/>
+  <path d="M120 320c0 0 10-20 30-20c20 0 30 20 30 20" fill="none" stroke="#000000" stroke-width="10"/>
+  <path d="M160 300c0 0 10-10 20-10" fill="none" stroke="#000000" stroke-width="5"/>
+  <path d="M140 310c0 0 10-10 20-10" fill="none" stroke="#000000" stroke-width="5"/>
+</svg>

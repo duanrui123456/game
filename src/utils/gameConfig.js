@@ -31,7 +31,7 @@ export const ITEMS_INFO = {
   },
   [ITEM_TYPES.BANANA]: {
     name: '香蕉',
-    image: 'banana.png', 
+    image: 'banana.png',
     shape: 'rectangle',
     width: 60,
     height: 20,
@@ -130,7 +130,7 @@ export const ITEMS_INFO = {
 export const LEVELS = [
   {
     level: 1,
-    timeLimit: 60, // 60秒
+    timeLimit: 50, // 50秒
     itemTypesToGenerate: [
       ITEM_TYPES.APPLE,
       ITEM_TYPES.BANANA,
@@ -142,7 +142,7 @@ export const LEVELS = [
   },
   {
     level: 2,
-    timeLimit: 75,
+    timeLimit: 50, // 50秒
     itemTypesToGenerate: [
       ITEM_TYPES.APPLE,
       ITEM_TYPES.BANANA,
@@ -156,7 +156,7 @@ export const LEVELS = [
   },
   {
     level: 3,
-    timeLimit: 90,
+    timeLimit: 50, // 50秒
     itemTypesToGenerate: [
       ITEM_TYPES.APPLE,
       ITEM_TYPES.BANANA,
@@ -172,7 +172,7 @@ export const LEVELS = [
   },
   {
     level: 4,
-    timeLimit: 100,
+    timeLimit: 50, // 50秒
     itemTypesToGenerate: [
       ITEM_TYPES.APPLE,
       ITEM_TYPES.BANANA,
@@ -190,7 +190,7 @@ export const LEVELS = [
   },
   {
     level: 5,
-    timeLimit: 120,
+    timeLimit: 50, // 50秒
     itemTypesToGenerate: Object.values(ITEM_TYPES),
     itemCount: { min: 25, max: 30 },
     orderComplexity: 8,
@@ -204,4 +204,4 @@ export const GAME_STATES = {
   PLAYING: 'playing',
   LEVEL_COMPLETE: 'level_complete',
   GAME_OVER: 'game_over',
-}; 
+};

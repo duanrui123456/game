@@ -11,6 +11,7 @@ const SoundEffects = () => {
   const correctSoundRef = useRef(null);
   const alarmSoundRef = useRef(null);
   const fireworksSoundRef = useRef(null);
+  const labiSoundRef = useRef(null);
 
   // 初始化音效
   useEffect(() => {
@@ -30,11 +31,16 @@ const SoundEffects = () => {
     fireworksSoundRef.current = new Audio('/voice/correct.mp3');
     fireworksSoundRef.current.volume = 0.7; // 设置音量为70%
 
+    // 创建开场音效
+    labiSoundRef.current = new Audio('/voice/labi.mp3');
+    labiSoundRef.current.volume = 0.7; // 设置音量为70%
+
     // 预加载音效
     tapSoundRef.current.load();
     correctSoundRef.current.load();
     alarmSoundRef.current.load();
     fireworksSoundRef.current.load();
+    labiSoundRef.current.load();
 
     return () => {
       // 组件卸载时停止音效
@@ -53,6 +59,10 @@ const SoundEffects = () => {
       if (fireworksSoundRef.current) {
         fireworksSoundRef.current.pause();
         fireworksSoundRef.current.currentTime = 0;
+      }
+      if (labiSoundRef.current) {
+        labiSoundRef.current.pause();
+        labiSoundRef.current.currentTime = 0;
       }
     };
   }, []);
@@ -97,6 +107,16 @@ const SoundEffects = () => {
           fireworksSoundRef.current.currentTime = 0;
           fireworksSoundRef.current.play().catch(error => {
             console.error('烟花音效播放失败:', error);
+          });
+        }
+      },
+
+      playLabiSound: () => {
+        if (labiSoundRef.current) {
+          // 重置音频位置，确保每次都能播放
+          labiSoundRef.current.currentTime = 0;
+          labiSoundRef.current.play().catch(error => {
+            console.error('开场音效播放失败:', error);
           });
         }
       }

@@ -61,6 +61,11 @@ const GameStatusOverlay = ({
       {/* 游戏状态覆盖层 */}
       <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40">
         <div className="bg-white rounded-xl p-8 max-w-md w-full text-center">
+          {/* 游戏Logo */}
+          <div className="flex justify-center mb-4">
+            <img src="/game-favicon.svg" alt="游戏Logo" className="w-24 h-24" />
+          </div>
+
           {gameState === GAME_STATES.IDLE && (
             <>
               <h1 className="text-3xl font-bold mb-6">超市分拣游戏</h1>
@@ -68,7 +73,14 @@ const GameStatusOverlay = ({
                 在规定时间内，将物品分拣到指定区域，匹配订单需求。通过点击物品来完成分拣。
               </p>
               <button
-                onClick={onStartGame}
+                onClick={() => {
+                  // 播放开场音效
+                  if (window.gameAudio && window.gameAudio.playLabiSound) {
+                    window.gameAudio.playLabiSound();
+                  }
+                  // 调用开始游戏函数
+                  onStartGame();
+                }}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200"
               >
                 开始游戏
@@ -127,7 +139,14 @@ const GameStatusOverlay = ({
                 </p>
               </div>
               <button
-                onClick={onRestartGame}
+                onClick={() => {
+                  // 播放开场音效
+                  if (window.gameAudio && window.gameAudio.playLabiSound) {
+                    window.gameAudio.playLabiSound();
+                  }
+                  // 调用重新开始游戏函数
+                  onRestartGame();
+                }}
                 disabled={!animationComplete}
                 className={`
                   font-bold py-3 px-6 rounded-lg transition duration-200
