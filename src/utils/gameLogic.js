@@ -3,8 +3,7 @@
  * 包含游戏的核心逻辑功能
  */
 
-import Matter from 'matter-js';
-import { ITEM_TYPES, ITEMS_INFO, LEVELS } from './gameConfig';
+import { ITEMS_INFO } from './gameConfig';
 
 /**
  * 生成一个随机范围内的整数
@@ -79,7 +78,6 @@ export const generateItems = (levelConfig, physicsWidth, physicsHeight) => {
  */
 export const createGameItem = (itemData) => {
   const { id, type, position, level } = itemData;
-  const itemInfo = ITEMS_INFO[type];
 
   return {
     id,
@@ -225,7 +223,6 @@ export const calculateScore = (timeLeft, checkResult, levelConfig) => {
 
   // 准确度加成
   const requiredItemCount = checkResult.updatedOrder.reduce((sum, item) => sum + item.required, 0);
-  const sortedItemCount = checkResult.updatedOrder.reduce((sum, item) => sum + item.collected, 0);
 
   const extraItemsCount = checkResult.extraItems.length;
 
